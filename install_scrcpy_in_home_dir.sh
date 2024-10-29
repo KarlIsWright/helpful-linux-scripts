@@ -230,15 +230,16 @@ check_version "meson" "1.5.0"
 
 # Main menu function
 main_menu() {
+  check_scrcpy_source
+  source_installed_status=$?
+  check_scrcpy_installed  
+  program_installed_status=$?
+
   echo " "
   echo "-----------------   SCRCPY Installation Manager ------------------"
   echo " "
   echo "                 ------------ Main Menu ------------"
   echo " "
-  check_scrcpy_source
-  source_installed_status=$?
-  check_scrcpy_installed  
-  program_installed_status=$?
 
   if [ $program_installed_status -eq 0 ]; then
     echo "1) Update scrcpy"
@@ -250,9 +251,12 @@ main_menu() {
       1)
         github_url="https://github.com/Genymobile/scrcpy/releases"
         latest_release=$(curl -s "$github_url" | grep -oP 'releases/tag/v\K[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
+        echo " "
         echo "Latest release version from GitHub: $latest_release"
+        echo " "
         installed_version=$(scrcpy --version | head -n 1 | grep -oP '\K[0-9]+\.[0-9]+(\.[0-9]+)?')
         echo "Installed scrcpy version: $installed_version"
+        echo " "
 
         if [ "$latest_release" == "$installed_version" ]; then
           echo "You already have the latest version of scrcpy installed."
