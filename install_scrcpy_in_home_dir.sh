@@ -57,14 +57,12 @@ if [ -d "$folder" ]; then
   # If any files are missing, report them; otherwise, cd into the folder
   if [ ${#missing_files[@]} -eq 0 ]; then
     echo "All required files are present. Entering the folder..."
-    cd "$folder" || { echo "Failed to enter folder. Exiting."; exit 1; }
+    cd "$folder" || { echo "Failed to enter folder. Exiting."; exit 0; }
   else
     echo ""    
-    exit 1
   fi
 else
   echo ""
-  exit 1
 fi
 
 }
@@ -89,7 +87,6 @@ check_scrcpy_source() {
       latest_release=$(curl -s "$github_url" | grep -oP 'releases/tag/v\K[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n 1)
       if [ -z "$latest_release" ]; then
         echo "Failed to fetch the latest scrcpy version. Exiting."
-        exit 1
       fi
       curl -L "https://github.com/Genymobile/scrcpy/archive/refs/tags/v$latest_release.tar.gz" -o "scrcpy-v$latest_release.tar.gz"      
       mkdir -p scrcpy && tar -xzf "scrcpy-v$latest_release.tar.gz" -C scrcpy --strip-components=1
@@ -99,7 +96,6 @@ check_scrcpy_source() {
       exit 0
     else
       echo "Invalid option. Exiting."
-      exit 1
     fi
   else
     # Step 2: Extract the version number from meson.build file
@@ -125,15 +121,12 @@ check_android_sdk_root() {
             fi
           done
           echo "ERROR: Could not find Android SDK folder. Is it installed?"
-          exit 1
           ;;
         [Nn]*) 
           echo "FATAL ERROR: ANDROID_SDK_ROOT is not set or empty."
-          exit 1
           ;;
         *) 
           echo "Invalid input. Please enter y or n."
-          exit 1
           ;;
       esac
     }
@@ -146,16 +139,19 @@ check_android_sdk_root() {
 # Function to check for highest Gradle version
 # Check for the highest gradle build version.
 check_highest_gradle_version() {
+  echo "checking for the highest gradle version."
   url="https://services.gradle.org/distributions/"
   content=$(curl -s "$url")
   versions=$(echo "$content" | grep -oP 'gradle-\K[0-9]+\.[0-9]+(\.[0-9]+)?(?=-bin.zip)')
   if [ -z "$versions" ]; then
     echo "No matching Gradle versions found."
-    exit 1
   fi
   highest_version=$(echo "$versions" | sort -V | tail -n 1)
   echo "The highest Gradle version available is: $highest_version"
   sed -r -i "s/(gradle-)[0-9]+\.[0-9]+(\.[0-9]+)?(-bin\.zip)/\1$highest_version\3/" gradle/wrapper/gradle-wrapper.properties
+  distributionSha256Sum=$(curl -L https://services.gradle.org/distributions/gradle-8.14.1-bin.zip.sha256)
+  echo "the sha256sum is $distributionSha256Sum"
+  sed -r -i "s/distributionSha256Sum=.*/distributionSha256Sum=$distributionSha256Sum/" gradle/wrapper/gradle-wrapper.properties
 }
 
 # Function to install scrcpy in the home dir
@@ -189,7 +185,6 @@ install_scrcpy_as_user() {
   esac
 else
   echo "Installation failed." >&2
-  exit 1    
   fi
 }
 
@@ -211,11 +206,9 @@ check_version() {
       echo "$cmd version $installed_version is installed and meets the requirement (>= $required_version)."
     else
       echo "FATAL ERROR: $cmd version $installed_version is installed but does not meet the requirement (>= $required_version)." >&2
-      exit 1
     fi
   else
     echo "FATAL ERROR: $cmd is not installed." >&2
-    exit 1
   fi
 }
 
@@ -302,7 +295,7 @@ main_menu() {
         ;;
       *)
         echo "Invalid choice. Exiting."
-        exit 1
+        exit 0
         ;;
     esac
   else
