@@ -9,7 +9,7 @@ Scripts are only tested on Arch-Linux, but should work on other distro's as well
 Take this function and add add it into your ~/.bashrc file. It takes folders in your ~/.local/ that end in .app,
 searches for a bin folder, then adds that bin path into your user $PATH.
 
-[[
+```
 add_bin_to_path() {
     # Loop through all directories ending in .app under $HOME/.local
     for app_dir in "$HOME/.local"/*.app; do
@@ -32,10 +32,9 @@ add_bin_to_path() {
         fi
     done
 }
-]]
 
 add_bin_to_path;
-
+```
 
 # install_scrcpy_in_home_dir
 This script will help you install scrcpy for linux. Tested only on my own Archlinux build, it should work with other distros.
