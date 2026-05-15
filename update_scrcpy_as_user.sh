@@ -4,11 +4,13 @@ echo "Welcome! This script will help you install, update, or remove the scrcpy p
 
 check_scrcpy_installed() {
   scrcpy_files=(
-    "$HOME/.local/share/scrcpy/scrcpy-server"
+    "$HOME/.local/bin/scrcpy"
     "$HOME/.local/share/man/man1/scrcpy.1"
     "$HOME/.local/share/icons/hicolor/256x256/apps/scrcpy.png"
+    "$HOME/.local/share/icons/hicolor/256x256/apps/disconnected.png"
     "$HOME/.local/share/zsh/site-functions/_scrcpy"
     "$HOME/.local/share/bash-completion/completions/scrcpy"
+    "$HOME/.local/share/zsh/site-functions/_scrcpy"
     "$HOME/.local/share/applications/scrcpy.desktop"
     "$HOME/.local/share/applications/scrcpy-console.desktop"
   )
