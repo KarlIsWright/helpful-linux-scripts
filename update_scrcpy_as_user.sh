@@ -14,6 +14,7 @@ check_scrcpy_installed() {
   )
 
   not_found=()
+  found=()
 
   for file in "${scrcpy_files[@]}"; do
     if [ ! -f "$file" ]; then
@@ -109,6 +110,90 @@ check_android_sdk_root() {
   fi
 }
 
+check_java() {
+  if ! command -v java >/dev/null 2>&1; then
+    echo "FATAL ERROR: Java is not installed."
+    echo "Please install Java, then re-run this script."
+    return 1
+  fi
+
+  local java_homes=()
+  local candidate
+  local resolved_candidate
+  local already_added
+
+  if [ -d "/usr/lib/jvm" ]; then
+    for candidate in /usr/lib/jvm/*; do
+      if [ ! -d "$candidate" ]; then
+        continue
+      fi
+      if [ ! -x "$candidate/bin/java" ]; then
+        continue
+      fi
+
+      resolved_candidate=$(readlink -f "$candidate")
+      already_added=false
+      for existing_home in "${java_homes[@]}"; do
+        if [ "$existing_home" = "$resolved_candidate" ]; then
+          already_added=true
+          break
+        fi
+      done
+
+      if [ "$already_added" = false ]; then
+        java_homes+=("$resolved_candidate")
+      fi
+    done
+  fi
+
+  if [ ${#java_homes[@]} -eq 0 ]; then
+    echo "Java found in PATH: $(command -v java)"
+    return 0
+  fi
+
+  echo "Available Java installations under /usr/lib/jvm:"
+  local i
+  for i in "${!java_homes[@]}"; do
+    echo "  $((i + 1))) ${java_homes[$i]}"
+  done
+
+  local selected_java_home
+
+  if [ ${#java_homes[@]} -eq 1 ]; then
+    selected_java_home="${java_homes[0]}"
+    echo "Only one Java installation found. Using default Java."
+  else
+    local default_java_path
+    local default_choice
+    local java_choice
+    default_java_path=$(readlink -f "$(command -v java)")
+    default_choice=1
+
+    for i in "${!java_homes[@]}"; do
+      if [ "$default_java_path" = "${java_homes[$i]}/bin/java" ]; then
+        default_choice=$((i + 1))
+        break
+      fi
+    done
+
+    read -p "Which Java should be used? (1-${#java_homes[@]}) [${default_choice}]: " java_choice
+    java_choice="${java_choice:-$default_choice}"
+
+    if ! [[ "$java_choice" =~ ^[0-9]+$ ]] || [ "$java_choice" -lt 1 ] || [ "$java_choice" -gt "${#java_homes[@]}" ]; then
+      echo "Invalid selection. Please run again and choose a valid number."
+      return 1
+    fi
+
+    selected_java_home="${java_homes[$((java_choice - 1))]}"
+  fi
+
+  export JAVA_HOME="$selected_java_home"
+  export PATH="$JAVA_HOME/bin:$PATH"
+  echo "Using Java: $JAVA_HOME"
+  java -version 2>&1 | head -n 1
+}
+
+
 # Function to check for highest Gradle version
 # Check for the highest gradle build version.
 check_highest_gradle_version() {
@@ -131,8 +216,8 @@ install_gradel_version() {
   echo " "
   echo " "
   export gradle_version=${highest_gradle_version}
-  read -p "  Specify which version you'd like to install (default: $highest_gradle_version): " user_input
-  gradle_version="${user_input:-$gradle_version}"
+  read -p "  Specify which version you'd like to install (default: 9.3.1): " user_input
+  gradle_version="${user_input:-9.3.1}"
   echo "Using gradle version: $gradle_version"
 
   sed -r -i "s/(gradle-)[0-9]+\.[0-9]+(\.[0-9]+)?(-bin\.zip)/\1$gradle_version\3/" gradle/wrapper/gradle-wrapper.properties
@@ -145,6 +230,7 @@ install_gradel_version() {
 install_scrcpy_as_user() {
   check_scrcpy_source || { troubleshooting "$(check_scrcpy_source 2>&1)"; }
   check_android_sdk_root || { troubleshooting "$(check_android_sdk_root 2>&1)"; }
+  check_java || { return 1; }
   get_latest_release
   ./bump_version $latest_release || { echo "Failed to run bump_version."; troubleshooting "bump_version failed"; }
   install_gradel_version  || { echo "Failed to download Gradel."; troubleshooting "gradle version install failed"; }
@@ -396,7 +482,7 @@ get_latest_release() {
 }
 
 get_latest_install(){
-        installed_version=$(scrcpy --version | head -n 1 | grep -oP '\K[0-9]+\.[0-9]+(\.[0-9]+)?');
+        installed_version=$(scrcpy --version | head -n 1 | grep -oP '\K[0-9]+\.[0-9]+?');
         if [ -z "$installed_version" ]; then
         echo "Scrcpy doesn't appear to be installed."
         fi
@@ -432,7 +518,8 @@ check_scrcpy_source() {
 
   else
     # Step 2: Extract the version number from meson.build file
-    meson_version=$(grep -oP 'version: *'\''\K[0-9]+\.[0-9]+\.[0-9]+' meson.build)  || { echo "Could not get meson_version check meson.build file. Exiting."; exit 1; }
+    meson_version=$(grep -oP 'version: *'\''\K[0-9]+\.[0-9]+(\.[0-9]+)?' meson.build)  || { echo "Could not get meson_version check meson.build file. Exiting."; exit 1; }
+    ## meson_version=$(grep -oP 'version: *'\''\K[0-9]+\.[0-9]+' meson.build)  || { echo "Could not get meson_version check meson.build file. Exiting."; exit 1; }
     echo "scrcpy source is present, version v$meson_version"
   fi
 }
